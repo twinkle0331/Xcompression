@@ -808,7 +808,7 @@ class TuckerWeights(nn.Module):
             self.blocks_num = 4
 
         if "ffn" in self.ops and "san" in self.ops:
-            self.bias_blocks_num = 12
+            self.bias_blocks_num = 9
         elif "ffn" in self.ops:
             self.bias_blocks_num = 5
         else:
@@ -1315,7 +1315,7 @@ class BertModel(BertPreTrainedModel):
         #self.swap(config) # may call it latter, since it may have first load paramters for a noraml BERT and then compress it
         self.use_compression = False
         if "load_compressed_model" in config.__dict__ and config.load_compressed_model:
-            self.tucker_weighter = TuckerWeightsFactory(config)
+            self.tucker_weighter = TuckerWeights(config)
             self.use_compression = True
             #bert_model_embedding_weights = self.embeddings.word_embeddings.get_weights()
             #self.cls.predictions.swap(word_embeddings_weights)
@@ -1333,7 +1333,6 @@ class BertModel(BertPreTrainedModel):
 
             self.embeddings.word_embeddings = EmbeddingFactory(config)
 
-
             if type(self.embeddings.word_embeddings) != nn.Embedding:
                 if "compression_from_scratch" in config.__dict__ and  config.compression_from_scratch:
                     pass
@@ -1344,7 +1343,7 @@ class BertModel(BertPreTrainedModel):
         if "rank_dim" in config.__dict__ and "rank_layer" in config.__dict__ and "rank_condim" in config.__dict__:
             print("using conpression during model building")
             config.use_compression = True
-            self.tucker_weighter = TuckerWeightsFactory(config)
+            self.tucker_weighter = TuckerWeights(config)
             if "compression_from_scratch" in config.__dict__ and   config.compression_from_scratch:
                 self.tucker_weighter.del_weights(config, self.encoder)
             else:

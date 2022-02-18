@@ -18,7 +18,7 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 from torch.nn import MSELoss
 
-from train_bert import PregeneratedDataset
+from general_distill import PregeneratedDataset
 from transformer.file_utils import WEIGHTS_NAME, CONFIG_NAME
 from transformer.modeling import BertForPreTraining
 from transformer.tokenization import BertTokenizer
@@ -44,13 +44,14 @@ def log_model(model):
         #print('p: {}'.format(p.nelement()))
         size += p.nelement()
     print('Total parameters: {}'.format(size))
+    return size
 
 path = "models/bert-base-uncased"
-data = Path("data/train_data")
-config = {"rank_condim": 128, "rank_dim": 128, "rank_layer": 12, "vocab_size": 30522, "hidden_size" : 768, "requires_grad": True, "num_hidden_layers": 12, "ops": "san_ffn"}
+data = Path("data/pregenerated_data")
+config = {"rank_condim": 64, "rank_dim": 64, "rank_layer": 144, "vocab_size": 30522, "hidden_size" : 768, "requires_grad": True, "num_hidden_layers": 12, "ops": "ffn","is_expand": False}
+# config = {"rank_condim": 768, "rank_dim": 768, "rank_layer": 144, "rank_left_expdim": 30,  "rank_right_expdim": 30, "is_expand": False, "vocab_size": 30522, "hidden_size" : 768, "requires_grad": True, "num_hidden_layers": 12, "ops": "san_ffn"}
+
 config = DottableDict(config)
-
-
 
 
 
@@ -58,7 +59,11 @@ def test_error(path,data,config):
     tokenizer = BertTokenizer.from_pretrained(path, do_lower_case=True)
     raw_model = BertForPreTraining.from_pretrained(path) # BertForPreTraining.from_scratch(args.student_model)
     new_model = BertForPreTraining.from_pretrained(path)
-    new_model.swap(config)
+    new_model.swap()
+    # new_model.bert.swap(config)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    raw_model = raw_model.to(device)
+    new_model = new_model.to(device)
     new_model.eval()
     raw_model.eval()
     log_model(raw_model)
@@ -67,7 +72,7 @@ def test_error(path,data,config):
     # print(raw_model.bert.embeddings.word_embeddings.weight)
     # print(new_model.bert.embeddings.word_embeddings.weight)
 
-    device = torch.device("cuda" if torch.cuda.is_available()  else "cpu")
+
     for epoch in range(1):
         epoch_dataset = PregeneratedDataset(epoch=epoch, training_path=data, tokenizer=tokenizer,
                                                     num_data_epochs=1, reduce_memory=False)
@@ -85,37 +90,14 @@ def test_error(path,data,config):
             loss1 = raw_model(input_ids, segment_ids, input_mask, lm_label_ids, is_next).item()
             # exit()
             print("----")
+            # new_model.step()
             loss2 = new_model(input_ids, segment_ids, input_mask, lm_label_ids, is_next).item()
             print(loss1, loss2)
-            diff.append(math.fabs(loss1-loss2)/math.sqrt(loss1 * loss2))
-            losses.append(loss2)
-            if step > 100:
-                break
-        print(np.array(diff).mean())
-        print(np.array(losses).mean())
+            # diff.append(math.fabs(loss1-loss2)/math.sqrt(loss1 * loss2))
+            # losses.append(loss2)
+            # if step > 100:
+            #     break
+        # print(np.array(diff).mean())
+        # print(np.array(losses).mean())
 
 test_error(path,data,config)
-
-
-# def test_reconstruct():
-#     dense = torch.nn.Linear(768,768)
-#     weight = dense.weight
-#     bias = dense.bias
-#
-#     x = torch.FloatTensor(np.random.randn(16,768))
-#     diff = dense(x) - (x @ weight.T + bias)
-#     print( diff.abs().mean() )
-#
-#     diff = dense(x) - (x.matmul(weight.T) + bias)
-#     print(diff.abs().mean())
-#
-#     diff = dense(x) - F.linear(x , weight , bias)
-#     print(diff.abs().mean())
-#
-#     new = torch.nn.Linear(768,768)
-#     with torch.no_grad():
-#         new.weight = torch.nn.Parameter(weight)
-#         new.bias = torch.nn.Parameter(bias)
-#     diff = dense(x) - new(x)
-#     print(diff.abs().mean())
-# test_reconstruct()
