@@ -47,7 +47,7 @@ python pregenerate_training_data.py --train_corpus data/corpus \
                   --bert_model models/bert-base-uncased \
                   --do_lower_case \
                   --epochs_to_generate 3 \
-                  --output_dir data/pregenerated_data $ 
+                  --output_dir data/pregenerated_data
 ```
 
 Due to the large size of the corpus, here we also offer a small pregenerated dataset for debugging.
