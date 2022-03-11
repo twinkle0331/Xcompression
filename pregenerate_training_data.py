@@ -27,6 +27,9 @@ from multiprocessing import Pool
 
 import numpy as np
 from random import random, randrange, randint, shuffle, choice
+import re
+import string
+from collections import Counter
 
 from transformer.tokenization import BertTokenizer
 # docs = None # global parameter
@@ -354,7 +357,7 @@ def create_training_file(_docs, vocab_list,  args, epoch_num, bi_text=True):
 
 def merge_documents(path):
     # dir,filename = os.path.split(path)
-    final_filename = os.path.join(path,"final_doc.txt")
+    final_filename = os.path.join(path,"corpus.txt")
     if os.path.exists(final_filename):
         return  final_filename
     with open(final_filename,"w",encoding="utf-8") as f:
@@ -380,6 +383,37 @@ def get_filename(path):
                 documents.append(document)
     return documents
 
+def is_valid(line):
+    l = len(line)
+    if l > 1000000 or l < 50:
+        return False
+    count = Counter(line)
+    alpha_cnt = sum(count[ch] for ch in string.ascii_letters)
+    if alpha_cnt < 50 or alpha_cnt / l < 0.7:
+        return False
+    if count['/'] / l > 0.05:  # filter hyperlinks
+        return False
+    if count['\\'] / l > 0.05:  # filter latex math equations
+        return False
+    if count['|'] / l > 0.05 or line[0] == '|':  # filter remaining tables
+        return False
+    return True
+
+def pre_cleanup(line):
+    line = line.replace('\t', ' ')  # replace tab with spaces
+    line = ' '.join(line.strip().split())  # remove redundant spaces
+    line = re.sub(r'\.{4,}', '...', line)  # remove extra dots
+    line = line.replace('<<', '«').replace('>>', '»')  # group << together
+    line = re.sub(' (,:\.\)\]»)', r'\1', line)  # remove space before >>
+    line = re.sub('(\[\(«) ', r'\1', line)  # remove space after <<
+    line = line.replace(',,', ',').replace(',.', '.')  # remove redundant punctuations
+    line = re.sub(r' \*([^\s])', r' \1', line)  # remove redundant asterisks
+    return ' '.join(line.strip().split())  # remove redundant spaces
+
+def post_cleanup(line):
+    line = re.sub(r'\\', ' ', line)  # remove all backslashes
+    return ' '.join(line.strip().split())  # remove redundant space
+
 
 def read_documents(filename, tokenizer):
 
@@ -388,15 +422,16 @@ def read_documents(filename, tokenizer):
     with open(filename, encoding="utf-8") as f:
         doc = []
         for line in tqdm(f, desc="Loading Dataset", unit=" lines"):
-            line = line.strip()
-            if line == "":
-                docs.append(doc)
-                doc = []
-                if len(docs) % 100 == 0:
-                    logger.info('loaded {} docs!'.format(len(docs)))
-            else:
-                tokens = tokenizer.tokenize(line)
-                doc.append(tokens)
+            if is_valid(line):
+                line = post_cleanup(line)
+                if line == "":
+                    docs.append(doc)
+                    doc = []
+                    if len(docs) % 100 == 0:
+                        logger.info('loaded {} docs!'.format(len(docs)))
+                else:
+                    tokens = tokenizer.tokenize(line)
+                    doc.append(tokens)
         if doc:
             docs.append(doc)  # If the last doc didn't end on a newline, make sure it still gets added
 
@@ -468,7 +503,6 @@ def parse_parameters():
 def main():
     args = parse_parameters()
 
-
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
     vocab_list = list(tokenizer.vocab.keys())
     doc_num = 0
@@ -480,6 +514,9 @@ def main():
             doc = []
             for line in tqdm(f, desc="Loading Dataset", unit=" lines"):
                 line = line.strip()
+                if is_valid(line):
+                    line = pre_cleanup(line)
+                    line = post_cleanup(line)
                 if line == "":
                     docs.add_document(doc)
                     doc = []

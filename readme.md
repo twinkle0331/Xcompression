@@ -20,13 +20,20 @@ Configuration [Install horovod on GPU](https://github.com/horovod/horovod/blob/m
 pip install horovod[pytorch]
 ```
 
+### Prepare corpus
 
+```
+cd data/corpus
+wget -t 0 -c -T 20 https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2
+python WikiExtractor.py enwiki-latest-pages-articles.xml.bz2 -b 30G -q -o - > corpus.txt
+```
 
-### loading pre-trained models
+### download pre-trained models
 
 ```bash
 wget https://huggingface.co/bert-base-uncased/resolve/main/pytorch_model.bin -P  models/bert-base-uncased
 wget https://huggingface.co/bert-base-uncased/resolve/main/vocab.txt -P  models/bert-base-uncased
+wget https://huggingface.co/bert-base-uncased/resolve/main/config.json -P  models/bert-base-uncased
 cp models/bert-base-uncased/pytorch_model.bin models/bert-td-72-384/pytorch_model.bin 
 cp models/bert-base-uncased/vocab.txt models/bert-td-72-384/vocab.txt
 ```
@@ -36,12 +43,14 @@ cp models/bert-base-uncased/vocab.txt models/bert-td-72-384/vocab.txt
 ### generate training data for given  corpora (e.g., saved in the path "corpora" )
 
 ```
-python pregenerate_training_data.py --train_corpus ${CORPUS_RAW} \ 
-                  --bert_model ${BERT_BASE_DIR}$ \
-                  --reduce_memory --do_lower_case \
+python pregenerate_training_data.py --train_corpus data/corpus \ 
+                  --bert_model models/bert-base-uncased \
+                  --do_lower_case \
                   --epochs_to_generate 3 \
-                  --output_dir ${CORPUS_JSON_DIR}$ 
+                  --output_dir data/pregenerated_data $ 
 ```
+
+Due to the large size of the corpus, here we also offer a small pregenerated dataset for debugging.
 
 ## task data augmentation
 
