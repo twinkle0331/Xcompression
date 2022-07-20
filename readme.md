@@ -87,7 +87,7 @@ ops = "san"
 
 ### Task distillation with data augmentation in fine-tuning phase
 
-Rename a pretrained model as "", for instance, change `step_0_pytorch_model.bin` to `pytorch_model.bin`, and change `load_compressed_model` from false to true in `output/config.json`
+Rename a pretrained model as "pytorch_model.bin", for instance, change `step_0_pytorch_model.bin` to `pytorch_model.bin`, and change `load_compressed_model` from false to true in `output/config.json`
 
 Task distillation for distributed training
 
