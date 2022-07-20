@@ -12,7 +12,7 @@ Code for paper ["Exploring extreme parameter compression for pre-trained languag
 
 Torch is needed, torch 1.0-1.4 is preferred
 
-Install horovod for distributed learning 
+[optional] Install horovod for distributed learning 
 
 Configuration [Install horovod on GPU](https://github.com/horovod/horovod/blob/master/docs/gpus.rst)
 
