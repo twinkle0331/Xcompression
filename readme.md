@@ -1,6 +1,6 @@
 # Explore extreme compression for  pre-trained language models
 
-Code for paper ["Exploring extreme parameter compression for pre-trained language models  ICLR2022"](https://openreview.net/forum?id=RftryyYyjiG) 
+[ICLR 2022]Code for paper ["Exploring Extreme Parameter Compression for Pre-trained Language Models"](https://arxiv.org/abs/2205.10036) 
 
 ## Before Training
 
